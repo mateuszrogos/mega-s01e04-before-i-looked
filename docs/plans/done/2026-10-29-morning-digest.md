@@ -1,8 +1,9 @@
 ---
 plan: morning-digest
-status: ready
+status: done
 owner: rook
 opened: 2026-10-29
+closed: 2026-10-29
 ---
 
 # Morning digest
@@ -77,3 +78,27 @@ page again with `LANE_MARKER` unset (the banner reads "no marker set") and uploa
 link. Move this plan to `docs/plans/done/` with its issue list.
 
 Done when: the preview link no longer shows the lane marker.
+
+## Issues
+
+| Plan section | Issue |
+|---|---|
+| 1 | [#1 — Run log reader](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/1) |
+| 2a | [#2 — Digest page: GET /digest/:night](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/2) |
+| 2b | [#3 — Digest JSON: GET /api/digest/:night](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/3) |
+| 2c | [#4 — Status board: night links and status counts](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/4) |
+| 2d | [#5 — Digest route tests](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/5) |
+| 3 | [#6 — Publish HTML preview for review](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/6) |
+| 4 | [#7 — Remove preview marker and archive completed plan](https://github.com/mateuszrogos/mega-s01e04-before-i-looked/issues/7) |
+
+## Review and cleanup
+
+The reviewer confirmed seeing the preview on 2026-10-29. After separate human
+approval, the page was exported again with `LANE_MARKER` unset and uploaded over
+the same [public preview](https://mateuszrogos-s01e04.pages.dev/). Its banner reads
+"no marker set". The assigned marker is absent from the stable URL and the new
+deployment URL. The old marked deployment was deleted and its public URL returns
+404. Preview HTML, credentials and live audit logs remain outside this repository.
+
+Verification: 62 repository tests and typecheck passed; the no-install uploader
+has 15 passing tests, including all 35 upstream BLAKE3 vectors.

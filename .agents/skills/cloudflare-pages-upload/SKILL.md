@@ -86,5 +86,6 @@ no longer serve the page. A teardown cannot undo other people's saved copies.
 Run `node --test <absolute-skill-path>/scripts/pages-check.mjs`.
 The suite tests payloads, credential handling, write guards, replacement, cleanup
 and all 35 upstream BLAKE3 hash vectors without network or real credentials.
-Creation and initial publication were live-verified on 2026-10-29; prune and full
-teardown are mock-tested, not yet live-tested. Do not claim otherwise.
+Creation, publication, marker-free replacement and old-deployment pruning were
+live-verified on 2026-10-29. The old marked URL returned 404. Full project teardown
+is mock-tested only; do not claim it was live-tested.
