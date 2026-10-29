@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cloudflare Pages upload"
+  short_description: "Upload and remove a static page without installing tools"
+  default_prompt: "Use $cloudflare-pages-upload to publish one approved HTML page and plan its cleanup."
