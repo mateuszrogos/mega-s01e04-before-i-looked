@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import type { DigestResult } from '../src/digest/types.js';
 import { createApp } from '../src/app.js';
 
 describe('digest routes', () => {
@@ -116,6 +117,23 @@ describe('digest routes', () => {
       expect(html).toContain('2 bad lines');
     });
 
+    it('renders nothing ran plus bad line count when only invalid lines in file', async () => {
+      writeFileSync(
+        join(tempRunsDir, '2026-10-28.jsonl'),
+        [
+          'invalid line 1',
+          'invalid line 2',
+          'invalid line 3',
+        ].join('\n'),
+      );
+
+      const res = await createApp(config).request('/digest/2026-10-28');
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain('nothing ran');
+      expect(html).toContain('3 bad lines');
+    });
+
     it('marks jobs with retries >= 3 or failures as warn', async () => {
       writeFileSync(
         join(tempRunsDir, '2026-10-28.jsonl'),
@@ -132,14 +150,24 @@ describe('digest routes', () => {
       expect(res.status).toBe(200);
       const html = await res.text();
 
+      // Extract all table rows and find the ones matching our jobs
+      const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || [];
+      const goodJobRow = rows.find(row => row.includes('good-job'));
+      const retryJobRow = rows.find(row => row.includes('retry-job'));
+      const failJobRow = rows.find(row => row.includes('fail-job'));
+
+      // Verify rows exist
+      expect(goodJobRow).toBeDefined();
+      expect(retryJobRow).toBeDefined();
+      expect(failJobRow).toBeDefined();
+
       // Good job row should not have warn class
-      const goodJobRow = html.match(/<tr[^>]*>[\s\S]*?good-job[\s\S]*?<\/tr>/);
-      expect(goodJobRow?.[0]).not.toContain('class="warn"');
-      expect(goodJobRow?.[0]).not.toContain('class=\'warn\'');
+      expect(goodJobRow).not.toContain('class="warn"');
+      expect(goodJobRow).not.toContain("class='warn'");
 
       // Retry and fail job rows should have warn class
-      expect(html).toMatch(/<tr[^>]*class="warn"[^>]*>[\s\S]*?retry-job[\s\S]*?<\/tr>/);
-      expect(html).toMatch(/<tr[^>]*class="warn"[^>]*>[\s\S]*?fail-job[\s\S]*?<\/tr>/);
+      expect(retryJobRow).toContain('class="warn"');
+      expect(failJobRow).toContain('class="warn"');
     });
 
     it('displays null owner as "—"', async () => {
@@ -230,7 +258,7 @@ describe('digest routes', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toContain('application/json');
 
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       expect(json).toHaveProperty('missing');
       expect(json).toHaveProperty('rows');
       expect(json).toHaveProperty('badLines');
@@ -256,7 +284,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
 
       expect(json.missing).toBe(false);
       expect(json.badLines).toBe(0);
@@ -275,7 +303,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       const row = json.rows[0];
 
       expect(row).toHaveProperty('job');
@@ -311,7 +339,7 @@ describe('digest routes', () => {
 
       const htmlRes = await createApp(config).request('/digest/2026-10-28');
       const jsonRes = await createApp(config).request('/api/digest/2026-10-28');
-      const json = await jsonRes.json() as any;
+      const json = (await jsonRes.json()) as DigestResult;
       const html = await htmlRes.text();
 
       // Jobs should be in same sorted order
@@ -335,7 +363,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       expect(json.rows[0].owner).toBe(null);
     });
 
@@ -352,9 +380,9 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
-      // 2 retries + 1 ok + 1 fail = 2 ok, 2 retry, 1 fail
-      expect(json.counts).toEqual({ ok: 2, retry: 2, fail: 1 });
+      const json = (await res.json()) as DigestResult;
+      // job-1: 2 retries, 1 ok; job-2: 1 fail = 1 ok, 2 retry, 1 fail
+      expect(json.counts).toEqual({ ok: 1, retry: 2, fail: 1 });
     });
 
     it('handles empty night file', async () => {
@@ -362,7 +390,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       expect(json.missing).toBe(false);
       expect(json.rows).toHaveLength(0);
       expect(json.badLines).toBe(0);
@@ -380,7 +408,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       expect(json.badLines).toBe(1);
     });
 
@@ -401,7 +429,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       const row = json.rows[0];
       expect(row.retries).toBe(2);
       expect(row.runs).toBe(3);
@@ -419,7 +447,7 @@ describe('digest routes', () => {
 
       const res = await createApp(config).request('/api/digest/2026-10-28');
       expect(res.status).toBe(200);
-      const json = await res.json() as any;
+      const json = (await res.json()) as DigestResult;
       const row = json.rows[0];
       expect(row.hasFailure).toBe(true);
       expect(row.lastStatus).toBe('ok');
@@ -439,7 +467,7 @@ describe('digest routes', () => {
 
       const htmlRes = await createApp(config).request('/digest/2026-10-28');
       const jsonRes = await createApp(config).request('/api/digest/2026-10-28');
-      const json = await jsonRes.json() as any;
+      const json = (await jsonRes.json()) as DigestResult;
       const html = await htmlRes.text();
 
       // JSON counts
@@ -459,6 +487,31 @@ describe('digest routes', () => {
 
       expect(htmlRes.status).toBe(404);
       expect(jsonRes.status).toBe(404);
+    });
+  });
+
+  describe('status board night links with digest counts', () => {
+    it('shows night links on status board with ok/retry/fail counts', async () => {
+      writeFileSync(
+        join(tempRunsDir, '2026-10-28.jsonl'),
+        [
+          JSON.stringify({ at: '2026-10-28T01:00:00+01:00', job: 'job-1', status: 'ok', owner: 'rook' }),
+          JSON.stringify({ at: '2026-10-28T01:01:00+01:00', job: 'job-2', status: 'ok', owner: 'rook' }),
+          JSON.stringify({ at: '2026-10-28T01:02:00+01:00', job: 'job-3', status: 'retry', owner: 'rook' }),
+          JSON.stringify({ at: '2026-10-28T01:03:00+01:00', job: 'job-4', status: 'fail', owner: 'rook' }),
+        ].join('\n'),
+      );
+
+      const res = await createApp(config).request('/');
+      expect(res.status).toBe(200);
+      const html = await res.text();
+
+      // Night link should appear
+      expect(html).toContain('2026-10-28');
+      // Counts should be displayed (2 ok, 1 retry, 1 fail)
+      expect(html).toContain('ok');
+      expect(html).toContain('retry');
+      expect(html).toContain('fail');
     });
   });
 });
