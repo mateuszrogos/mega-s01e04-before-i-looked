@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, chmod, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { blake3, assetKey } from './blake3.mjs';
 import { Pages, loadConfig, main } from './pages.mjs';
@@ -190,4 +191,14 @@ test('reject scripts before asset upload', async () => {
     await assert.rejects(m.client.put(path), /no script/);
     assert.equal(m.calls.length, 1);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+// Importing from stdin is used for read-only deployment diagnostics.
+test('library import from stdin does not run CLI or resolve the dash as a file', () => {
+  const url = new URL('./pages.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-'], {
+    input: `await import(${JSON.stringify(url)});`, encoding: 'utf8', timeout: 30000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
 });

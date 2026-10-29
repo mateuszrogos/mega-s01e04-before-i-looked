@@ -209,7 +209,7 @@ export async function main(args = process.argv.slice(2)) {
   console.log(JSON.stringify(result, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(await realpath(resolve(process.argv[1]))).href) {
+if (process.argv[1] && process.argv[1] !== '-' && import.meta.url === pathToFileURL(await realpath(resolve(process.argv[1]))).href) {
   main().catch((error) => {
     // A parser/config error could echo user input. Only expose our controlled errors.
     const message = error instanceof Error && error.constructor === Error ? error.message : 'Invalid input or local I/O failure; inspect configuration.';
