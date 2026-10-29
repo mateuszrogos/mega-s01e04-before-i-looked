@@ -38,12 +38,12 @@ export function DigestPage({ digest }: { digest: DigestResult }) {
               ))}
             </tbody>
           </table>
-          {digest.badLines > 0 && (
-            <p class="mute" style="margin-top: 1rem; font-size: 0.875em;">
-              {digest.badLines} bad line{digest.badLines === 1 ? '' : 's'}
-            </p>
-          )}
         </>
+      )}
+      {digest.badLines > 0 && (
+        <p class="mute">
+          {digest.badLines} bad line{digest.badLines === 1 ? '' : 's'}
+        </p>
       )}
     </>
   );

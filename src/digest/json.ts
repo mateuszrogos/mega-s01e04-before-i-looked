@@ -1,6 +1,5 @@
-import { Hono } from 'hono';
+import type { Hono } from 'hono';
 import type { RigConfig } from '../config.js';
-import type { DigestResult } from './types.js';
 import { readNight } from './reader.js';
 
 export function registerDigestJson(app: Hono, config: RigConfig) {
@@ -12,19 +11,16 @@ export function registerDigestJson(app: Hono, config: RigConfig) {
 
       if (result.missing) {
         return c.json(
-          { error: 'not found' } as { error: string },
+          { error: 'not found' },
           404,
         );
       }
 
-      return c.json(result as DigestResult, 200);
+      return c.json(result, 200);
     } catch (error: unknown) {
-      if (
-        error instanceof RangeError
-        && error.message === 'night must be a real YYYY-MM-DD date'
-      ) {
+      if (error instanceof RangeError) {
         return c.json(
-          { error: 'invalid date' } as { error: string },
+          { error: 'invalid date' },
           404,
         );
       }
