@@ -52,7 +52,7 @@ export const readNight: ReadNight = (runsDir, night) => {
     throw error;
   }
 
-  const jobs = new Map<string, { row: DigestRow; first: number; last: number }>();
+  const jobs = new Map<string, { row: DigestRow; first: number; last: number; lastErrorAt: number }>();
   for (const line of contents.split(/\r?\n/)) {
     if (line.trim() === '') continue;
     let event: unknown;
@@ -85,6 +85,7 @@ export const readNight: ReadNight = (runsDir, night) => {
         },
         first: at,
         last: at,
+        lastErrorAt: event.error == null ? -Infinity : at,
       });
       continue;
     }
@@ -93,6 +94,10 @@ export const readNight: ReadNight = (runsDir, night) => {
     row.runs++;
     if (event.status === 'retry') row.retries++;
     if (event.status === 'fail') row.hasFailure = true;
+    if (event.error != null && at >= existing.lastErrorAt) {
+      existing.lastErrorAt = at;
+      row.lastError = event.error;
+    }
     if (at < existing.first) {
       existing.first = at;
       row.firstAt = event.at;
@@ -101,7 +106,6 @@ export const readNight: ReadNight = (runsDir, night) => {
       existing.last = at;
       row.owner = event.owner;
       row.lastStatus = event.status;
-      row.lastError = event.error ?? null;
       row.lastAt = event.at;
     }
   }

@@ -10,7 +10,7 @@ export type DigestRow = {
   /** True if any event failed, even if the job later recovered. */
   hasFailure: boolean;
   lastStatus: DigestStatus;
-  /** Error on the last event, or null if absent (not a stale error). */
+  /** Most recent non-null error by event instant; null if no event had an error. */
   lastError: string | null;
   /** Earliest/latest instants, with their original log offsets preserved. */
   firstAt: string;
@@ -37,7 +37,9 @@ export type DigestResult = {
  * Events require a nonempty job, a valid offset-bearing ISO timestamp,
  * a known status, owner: string|null, and optional error: string|null.
  * Extra fields are ignored. Chronological ties use the last line for
- * owner/status/error/lastAt; firstAt keeps the first tied line.
+ * owner/status/lastAt; firstAt keeps the first tied line.
+ * lastError independently tracks the latest non-null error by event instant,
+ * with later lines winning ties; recovery or null errors never clear it.
  * Both HTML and JSON consumers must use these same rows and counts.
  */
 export type ReadNight = (runsDir: string, night: string) => DigestResult;

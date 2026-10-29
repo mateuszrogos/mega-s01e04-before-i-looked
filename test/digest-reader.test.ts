@@ -49,12 +49,12 @@ describe('readNight', () => {
       },
       {
         job: 'fixtures/refresh', owner: 'rook', runs: 4, retries: 3, hasFailure: false,
-        lastStatus: 'ok', lastError: null,
+        lastStatus: 'ok', lastError: 'upstream 503',
         firstAt: '2026-10-29T01:30:00+01:00', lastAt: '2026-10-29T01:37:00+01:00',
       },
       {
         job: 'lane/sync', owner: 'rook', runs: 8, retries: 1, hasFailure: false,
-        lastStatus: 'ok', lastError: null,
+        lastStatus: 'ok', lastError: 'lock held',
         firstAt: '2026-10-28T23:00:06+01:00', lastAt: '2026-10-29T05:00:04+01:00',
       },
       {
@@ -81,7 +81,7 @@ describe('readNight', () => {
       missing: false, badLines: 0, counts: { ok: 1, retry: 1, fail: 1 },
       rows: [{
         job: 'job', owner: null, runs: 3, retries: 1, hasFailure: true,
-        lastStatus: 'ok', lastError: null,
+        lastStatus: 'ok', lastError: 'retrying',
         firstAt: '2026-10-29T02:30:00+02:00', lastAt: '2026-10-29T01:15:00-01:00',
       }],
     });
@@ -94,9 +94,49 @@ describe('readNight', () => {
     ]);
     expect(readNight(runsDir, night).rows[0]).toEqual({
       job: 'job', owner: null, runs: 2, retries: 0, hasFailure: true,
-      lastStatus: 'ok', lastError: null,
+      lastStatus: 'ok', lastError: 'failed',
       firstAt: '2026-10-29T00:30:00Z', lastAt: at,
     });
+  });
+
+  it('retains the last error after recovery with absent and explicit null errors', () => {
+    writeEvents([
+      event({ at: '2026-10-29T01:00:00+01:00', status: 'fail', error: 'diagnostic' }),
+      event({ at: '2026-10-29T02:00:00+01:00', owner: 'recovered' }),
+      event({ at: '2026-10-29T03:00:00+01:00', owner: null, error: null }),
+    ]);
+    expect(readNight(runsDir, night).rows[0]).toEqual({
+      job: 'job', owner: null, runs: 3, retries: 0, hasFailure: true,
+      lastStatus: 'ok', lastError: 'diagnostic',
+      firstAt: '2026-10-29T01:00:00+01:00', lastAt: '2026-10-29T03:00:00+01:00',
+    });
+  });
+
+  it('selects out-of-order errors by instant, breaking error ties by later line', () => {
+    writeEvents([
+      event({ at: '2026-10-29T05:00:00Z', owner: 'recovered' }),
+      event({ at: '2026-10-29T03:00:00+01:00', status: 'fail', error: 'first tied error' }),
+      event({ at: '2026-10-29T03:30:00+02:00', status: 'retry', error: 'older error' }),
+      event({ at: '2026-10-29T02:00:00Z', status: 'retry', error: 'later tied error' }),
+      event({ at: '2026-10-29T02:00:00Z', error: null }),
+      event({ at: '2026-10-29T00:00:00Z', status: 'fail', error: 'oldest error' }),
+    ]);
+    expect(readNight(runsDir, night).rows[0]).toEqual({
+      job: 'job', owner: 'recovered', runs: 6, retries: 2, hasFailure: true,
+      lastStatus: 'ok', lastError: 'later tied error',
+      firstAt: '2026-10-29T00:00:00Z', lastAt: '2026-10-29T05:00:00Z',
+    });
+  });
+
+  it('returns null when no events have errors and treats empty error strings as non-null', () => {
+    writeEvents([
+      event({ job: 'no-errors' }),
+      event({ job: 'no-errors', error: null }),
+      event({ job: 'empty-error', status: 'retry', error: '' }),
+      event({ job: 'empty-error' }),
+    ]);
+    expect(readNight(runsDir, night).rows.map(({ job, lastError }) => ({ job, lastError })))
+      .toEqual([{ job: 'empty-error', lastError: '' }, { job: 'no-errors', lastError: null }]);
   });
 
   it('counts invalid JSON and shapes without throwing or contaminating valid counts', () => {
