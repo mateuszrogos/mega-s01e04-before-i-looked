@@ -322,7 +322,7 @@ describe('digest routes', () => {
       expect(row.retries).toBe(1);
       expect(row.hasFailure).toBe(false);
       expect(row.lastStatus).toBe('ok');
-      expect(row.lastError).toBe(null);
+      expect(row.lastError).toBe("first error");
       expect(row.firstAt).toBe('2026-10-28T01:00:00+01:00');
       expect(row.lastAt).toBe('2026-10-28T01:05:00+01:00');
     });
